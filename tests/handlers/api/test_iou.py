@@ -18,6 +18,7 @@
 import pytest
 import os
 import stat
+import aiohttp
 
 from tests.utils import asyncio_patch
 from unittest.mock import patch, MagicMock, PropertyMock
@@ -286,9 +287,27 @@ def test_get_initial_config_with_config_file(server, project, vm):
     assert response.json["content"] == "TEST"
 
 
-def test_vms(server, vm, tmpdir, fake_iou_bin):
+def test_vms(server, tmpdir, fake_iou_bin):
 
-    with patch("gns3server.modules.IOU.get_images_directory", return_value=str(tmpdir), example=True):
-        response = server.get("/iou/vms")
+    with patch("gns3server.modules.IOU.get_images_directory", return_value=str(tmpdir)):
+        response = server.get("/iou/vms", example=True)
     assert response.status == 200
     assert response.json == [{"filename": "iou.bin"}]
+
+
+def test_upload_vm(server, tmpdir):
+    with open(str(tmpdir / "test"), "w+") as f:
+        f.write("TEST")
+
+    body = aiohttp.FormData()
+    body.add_field("file", open(str(tmpdir / "test"), "rb"), content_type="application/iou", filename="test2")
+
+    with patch("gns3server.modules.IOU.get_images_directory", return_value=str(tmpdir),):
+        response = server.post('/iou/vms', body=body, raw=True)
+        assert response.status == 204
+
+    with open(str(tmpdir / "test2")) as f:
+        assert f.read() == "TEST"
+
+
+

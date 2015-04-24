@@ -325,3 +325,17 @@ class IOUHandler:
         vms = yield from iou_manager.list_images()
         response.set_status(200)
         response.json(vms)
+
+    @Route.post(
+        r"/iou/vms",
+        status_codes={
+            204: "Image uploaded",
+        },
+        raw=True,
+        description="Upload IOU image. As classic HTTP file upload")
+    def upload_vm(request, response):
+
+        data = yield from request.post()
+        iou_manager = IOU.instance()
+        yield from iou_manager.write_image(data["file"].filename, data["file"].content)
+        response.set_status(204)

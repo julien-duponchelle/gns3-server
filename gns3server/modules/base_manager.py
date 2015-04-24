@@ -427,3 +427,16 @@ class BaseManager:
         Get the image directory on disk
         """
         raise NotImplementedError
+
+    @asyncio.coroutine
+    def write_image(self, filename, stream):
+        path = os.path.join(self.get_images_directory(), os.path.basename(filename))
+        log.info("Writting image file %s", path)
+        #TODO: manage errors
+        with open(path, 'wb+') as f:
+            while True:
+                packet = yield from stream.read(512)
+                if not packet:
+                    break
+                f.write(packet)
+        os.chmod(700, path)
