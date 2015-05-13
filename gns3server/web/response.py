@@ -37,7 +37,16 @@ class Response(aiohttp.web.Response):
         self._request = request
         headers['X-Route'] = self._route
         headers['Server'] = "Python/{0[0]}.{0[1]} GNS3/{1}".format(sys.version_info, __version__)
+
+
         super().__init__(headers=headers, **kwargs)
+
+        accept_encoding = self._request.headers.get('accept-encoding', '').lower()
+        self._gzip = 'gzip' in accept_encoding
+        if self._gzip:
+            self.enable_chunked_encoding()
+            self.headers["Content-Encoding"] = 'gzip'
+
 
     def start(self, request):
         if log.getEffectiveLevel() == logging.DEBUG:
@@ -49,7 +58,14 @@ class Response(aiohttp.web.Response):
             log.debug(dict(self.headers))
             if hasattr(self, 'body') and self.body is not None and self.headers["CONTENT-TYPE"] == "application/json":
                 log.debug(json.loads(self.body.decode('utf-8')))
-        return super().start(request)
+
+        response = super().start(request)
+
+        if self._gzip:
+            response.add_compression_filter('gzip')
+
+        return response
+
 
     def html(self, answer):
         """
